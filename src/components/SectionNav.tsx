@@ -1,69 +1,238 @@
-import React from 'react';
-import { Disc, ChevronRight } from 'lucide-react';
-import { ActiveToolId, ToolCategory } from '../types';
-import { ALL_TOOLS, CATEGORIES } from '../utils/toolsRegistry';
+import React, { useState } from 'react';
+import {
+  Wrench,
+  Compass,
+  Radio,
+  Eye,
+  Cpu,
+  Search,
+  ChevronRight,
+  SlidersHorizontal,
+} from 'lucide-react';
+import { ActiveToolId } from '../types';
+import { ALL_TOOLS, RegisteredTool } from '../utils/toolsRegistry';
 import { triggerHaptic } from '../utils/sensors';
+
+export type WorkspaceCategory =
+  | 'workshop'
+  | 'sensors'
+  | 'signals'
+  | 'optics'
+  | 'system';
+
+interface WorkspaceGroup {
+  id: WorkspaceCategory;
+  title: string;
+  badge: string;
+  icon: React.ComponentType<{ className?: string }>;
+  toolIds: ActiveToolId[];
+}
+
+export const WORKSPACES: WorkspaceGroup[] = [
+  {
+    id: 'workshop',
+    title: 'Druk 3D & Warsztat',
+    badge: '3D & Machining',
+    icon: Wrench,
+    toolIds: [
+      'input_shaper',
+      'belt_tuner',
+      'klipper_dashboard',
+      'bubble_level',
+      'protractor',
+      'ruler',
+      'ar_measure',
+    ],
+  },
+  {
+    id: 'sensors',
+    title: 'Sensory & Nawigacja',
+    badge: 'Environment & GPS',
+    icon: Compass,
+    toolIds: [
+      'compass',
+      'altimeter',
+      'barometer',
+      'speedometer',
+      'gps_finder',
+      'thermometer_hygrometer',
+    ],
+  },
+  {
+    id: 'signals',
+    title: 'Sygnały & Detekcja',
+    badge: 'EMF & Acoustics',
+    icon: Radio,
+    toolIds: [
+      'seismograph',
+      'metal_detector',
+      'emf_meter',
+      'sound_meter',
+      'frequency_generator',
+      'strobe_light',
+    ],
+  },
+  {
+    id: 'optics',
+    title: 'Optyka & Światło',
+    badge: 'Camera & Lighting',
+    icon: Eye,
+    toolIds: [
+      'flashlight',
+      'magnifier',
+      'qr_barcode_scanner',
+      'mirror',
+      'morse_code',
+    ],
+  },
+  {
+    id: 'system',
+    title: 'Narzędzia & System',
+    badge: 'Utilities & Diagnostics',
+    icon: Cpu,
+    toolIds: [
+      'stopwatch_timer',
+      'unit_converter',
+      'metronome_tuner',
+      'screen_tester',
+      'device_info',
+      'logs_manager',
+    ],
+  },
+];
 
 interface SectionNavProps {
   activeTool: ActiveToolId;
   onSelectTool: (tool: ActiveToolId) => void;
-  onOpenRadialHub: () => void;
 }
 
 export const SectionNav: React.FC<SectionNavProps> = ({
   activeTool,
   onSelectTool,
-  onOpenRadialHub,
 }) => {
-  const currentToolDef = ALL_TOOLS.find((t) => t.id === activeTool);
+  // Find which workspace contains the active tool
+  const currentWorkspace =
+    WORKSPACES.find((w) => w.toolIds.includes(activeTool)) || WORKSPACES[0];
+
+  const [selectedWorkspace, setSelectedWorkspace] = useState<WorkspaceCategory>(
+    currentWorkspace.id
+  );
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const activeGroup =
+    WORKSPACES.find((w) => w.id === selectedWorkspace) || WORKSPACES[0];
+
+  const toolsInGroup = ALL_TOOLS.filter((t) =>
+    activeGroup.toolIds.includes(t.id)
+  );
+
+  const searchedTools = searchQuery.trim()
+    ? ALL_TOOLS.filter(
+        (t) =>
+          t.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          t.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          t.shortName.toLowerCase().includes(searchQuery.toLowerCase())
+      )
+    : null;
+
+  const handleWorkspaceChange = (ws: WorkspaceCategory) => {
+    setSelectedWorkspace(ws);
+    triggerHaptic(15);
+  };
+
+  const handleToolClick = (toolId: ActiveToolId) => {
+    triggerHaptic(20);
+    onSelectTool(toolId);
+    // synchronize active workspace
+    const ws = WORKSPACES.find((w) => w.toolIds.includes(toolId));
+    if (ws) {
+      setSelectedWorkspace(ws.id);
+    }
+  };
 
   return (
-    <div className="bg-slate-900/95 border-b border-slate-800 backdrop-blur-md sticky top-[61px] z-20 shadow-md">
-      <div className="max-w-7xl mx-auto px-4 py-2">
-        <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none no-scrollbar">
-          {/* Radial Star Hub Switcher Button */}
-          <button
-            onClick={() => {
-              triggerHaptic(25);
-              onOpenRadialHub();
-            }}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-black transition-all cursor-pointer shadow-md shrink-0 ${
-              activeTool === 'radial_hub'
-                ? 'bg-amber-400 text-slate-950 ring-2 ring-amber-400/80 shadow-amber-500/30'
-                : 'bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-bold'
-            }`}
-            title="Otwórz kołowy / gwiazdowy interfejs wyboru"
-          >
-            <Disc className="w-4 h-4 animate-[spin_10s_linear_infinite]" />
-            <span>KOŁO GWIAZDA</span>
-          </button>
+    <nav className="retro-bezel border-b border-[#b8b2a5] px-3 sm:px-4 py-2 sticky top-[68px] sm:top-[65px] z-20 shadow-sm retro-pinstripe">
+      <div className="max-w-7xl mx-auto space-y-2">
+        {/* Top: 5 Primary OS X Workspace Tabs + Spotlight Search */}
+        <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-2">
+          {/* Segmented Control Buttons */}
+          <div className="flex bg-[#cbc4b7] p-1 rounded-xl border border-[#a8a295] shadow-inner overflow-x-auto scrollbar-none no-scrollbar">
+            {WORKSPACES.map((ws) => {
+              const Icon = ws.icon;
+              const isSelected = selectedWorkspace === ws.id;
+              const hasActiveTool = ws.toolIds.includes(activeTool);
 
-          <div className="h-5 w-[1px] bg-slate-800 shrink-0" />
+              return (
+                <button
+                  key={ws.id}
+                  onClick={() => handleWorkspaceChange(ws.id)}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap cursor-pointer ${
+                    isSelected
+                      ? 'aqua-button-primary shadow-sm scale-[1.02]'
+                      : 'text-[#44403c] hover:text-[#1c1917] hover:bg-[#ded9ce]'
+                  }`}
+                >
+                  <Icon className={`w-3.5 h-3.5 ${isSelected ? 'text-white' : 'text-[#57534e]'}`} />
+                  <span>{ws.title}</span>
+                  {hasActiveTool && (
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_4px_#34d399]" />
+                  )}
+                </button>
+              );
+            })}
+          </div>
 
-          {/* Quick Tool Chips / Active Category */}
-          {ALL_TOOLS.map((tool) => {
+          {/* OS X Spotlight Search Input */}
+          <div className="relative md:w-64">
+            <Search className="w-3.5 h-3.5 absolute left-3 top-2.5 text-[#78716c]" />
+            <input
+              type="text"
+              placeholder="Spotlight Szukaj (np. poziomica, EMF, Klipper)..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full bg-[#f2eee8] border border-[#a8a295] rounded-xl pl-8 pr-3 py-1 text-xs text-[#1c1917] placeholder-[#78716c] focus:outline-none focus:border-[#0284c7] shadow-inner font-sans"
+            />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery('')}
+                className="absolute right-2.5 top-2 text-xs text-[#78716c] hover:text-[#1c1917]"
+              >
+                ✕
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Bottom: OS X Shelf / Sub-Tool Dock */}
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 pt-0.5 scrollbar-none no-scrollbar">
+          {(searchedTools || toolsInGroup).map((tool) => {
             const isActive = tool.id === activeTool;
             const Icon = tool.icon;
+
             return (
               <button
                 key={tool.id}
-                onClick={() => {
-                  triggerHaptic(20);
-                  onSelectTool(tool.id);
-                }}
-                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-all cursor-pointer shrink-0 ${
+                onClick={() => handleToolClick(tool.id)}
+                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap transition-all cursor-pointer shadow-sm shrink-0 border ${
                   isActive
-                    ? 'bg-amber-400 text-slate-950 font-black shadow-md shadow-amber-500/20 ring-1 ring-amber-300'
-                    : 'bg-slate-950/70 text-slate-400 hover:bg-slate-800 hover:text-slate-100 border border-slate-800/80'
+                    ? 'bg-[#0284c7] text-white border-[#0369a1] ring-2 ring-[#38bdf8]/40 shadow-md translate-y-[-1px]'
+                    : 'bg-[#ece8df] hover:bg-[#ded9ce] text-[#292524] border-[#bcb6aa] hover:border-[#9e978a]'
                 }`}
+                title={tool.description}
               >
-                <Icon className="w-3.5 h-3.5" />
+                <div
+                  className={`w-5 h-5 rounded flex items-center justify-center ${
+                    isActive ? 'bg-white/20 text-white' : 'bg-[#ded8cd] text-[#0284c7]'
+                  }`}
+                >
+                  <Icon className="w-3.5 h-3.5" />
+                </div>
                 <span>{tool.shortName}</span>
               </button>
             );
           })}
         </div>
       </div>
-    </div>
+    </nav>
   );
 };

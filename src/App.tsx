@@ -1,10 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Disc } from 'lucide-react';
 import { Header } from './components/Header';
 import { SectionNav } from './components/SectionNav';
-import { RadialStarHub } from './components/RadialStarHub';
-import { RadialQuickDialModal } from './components/RadialQuickDialModal';
 
 // 26 Tools
 import { FlashlightTool } from './components/FlashlightTool';
@@ -39,16 +36,16 @@ import { KlipperPanel } from './components/KlipperPanel';
 import { LogsManager } from './components/LogsManager';
 
 import { ActiveToolId, KlipperPrinterState } from './types';
+import { ALL_TOOLS } from './utils/toolsRegistry';
 import { getSavedLogSessions } from './utils/export';
-import { triggerHaptic } from './utils/sensors';
 
 const DEFAULT_KLIPPER_HOST = '192.168.1.100:7125';
 
 export default function App() {
-  const [activeTool, setActiveTool] = useState<ActiveToolId>('radial_hub');
+  // Start cleanly on the Level Tool or user's preference without any unwanted circular wheel
+  const [activeTool, setActiveTool] = useState<ActiveToolId>('bubble_level');
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [savedLogsCount, setSavedLogsCount] = useState(0);
-  const [isQuickDialOpen, setIsQuickDialOpen] = useState(false);
 
   const [klipperHost, setKlipperHost] = useState(() => {
     return localStorage.getItem('workshop_klipper_host') || DEFAULT_KLIPPER_HOST;
@@ -88,13 +85,12 @@ export default function App() {
     setActiveTool('logs_manager');
   };
 
-  const handleOpenRadialHub = () => {
-    setActiveTool('radial_hub');
-  };
+  const currentToolDef = ALL_TOOLS.find((t) => t.id === activeTool) || ALL_TOOLS[0];
+  const ToolIcon = currentToolDef.icon;
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans selection:bg-amber-500 selection:text-slate-950 relative">
-      {/* App Header */}
+    <div className="min-h-screen bg-[#d8d4cb] text-[#1c1d21] flex flex-col font-sans selection:bg-[#0284c7] selection:text-white">
+      {/* OS X Workstation Header with iX Ai Software Branding */}
       <Header
         klipperState={klipperState}
         onOpenKlipper={handleOpenKlipper}
@@ -102,169 +98,165 @@ export default function App() {
         onToggleSound={() => setSoundEnabled(!soundEnabled)}
         onOpenLogs={handleOpenLogs}
         savedLogsCount={savedLogsCount}
-        onOpenRadialHub={handleOpenRadialHub}
       />
 
-      {/* Categorized Navigation */}
+      {/* Segmented OS X Workstation Deck Navigation */}
       <SectionNav
         activeTool={activeTool}
         onSelectTool={setActiveTool}
-        onOpenRadialHub={handleOpenRadialHub}
       />
 
-      {/* Main Content Area with Motion Transitions */}
-      <main className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 overflow-hidden">
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={activeTool}
-            initial={{ opacity: 0, y: 8, scale: 0.99 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -8, scale: 0.99 }}
-            transition={{ duration: 0.18, ease: 'easeOut' }}
-            className="w-full"
-          >
-            {/* Radial Star Hub */}
-            {activeTool === 'radial_hub' && (
-              <RadialStarHub
-                activeTool={activeTool}
-                onSelectTool={setActiveTool}
-              />
-            )}
+      {/* Main Workstation Container / Retro Chassis Window */}
+      <main className="flex-1 max-w-7xl w-full mx-auto p-3 sm:p-5">
+        <div className="retro-chassis rounded-2xl p-3 sm:p-5 shadow-2xl border border-[#b8b2a5] relative overflow-hidden">
+          {/* Sub-window header bar */}
+          <div className="flex items-center justify-between pb-3 mb-4 border-b border-[#c8c2b5] text-xs">
+            <div className="flex items-center gap-2">
+              <div className="w-7 h-7 rounded-lg bg-[#ded8cd] border border-[#beb8ab] flex items-center justify-center text-[#0284c7] shadow-inner">
+                <ToolIcon className="w-4 h-4" />
+              </div>
+              <div>
+                <h2 className="font-bold text-[#1c1917] text-sm leading-tight flex items-center gap-2">
+                  {currentToolDef.name}
+                </h2>
+                <span className="text-[11px] font-mono text-[#78716c]">
+                  Kategoria: {currentToolDef.categoryName} • iX S23 Ultra Driver v2.1
+                </span>
+              </div>
+            </div>
 
-            {/* 1. Latarka */}
-            {activeTool === 'flashlight' && <FlashlightTool />}
+            <div className="hidden sm:flex items-center gap-2 text-[11px] font-mono text-[#57534e]">
+              <span className="px-2 py-0.5 rounded bg-[#f2eee8] border border-[#a8a295]">
+                HARDWARE BUS: LOCKED
+              </span>
+            </div>
+          </div>
 
-            {/* 2. Poziomica */}
-            {activeTool === 'bubble_level' && <LevelTool soundEnabled={soundEnabled} />}
+          {/* Module Content with Smooth OS X Transitions */}
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={activeTool}
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -6 }}
+              transition={{ duration: 0.15, ease: 'easeOut' }}
+              className="w-full"
+            >
+              {/* 1. Latarka */}
+              {activeTool === 'flashlight' && <FlashlightTool />}
 
-            {/* 3. Kątomierz */}
-            {activeTool === 'protractor' && <ProtractorTool />}
+              {/* 2. Poziomica */}
+              {activeTool === 'bubble_level' && <LevelTool soundEnabled={soundEnabled} />}
 
-            {/* 4. Linijka ekranowa */}
-            {activeTool === 'ruler' && <ScreenCaliperTool />}
+              {/* 3. Kątomierz */}
+              {activeTool === 'protractor' && <ProtractorTool />}
 
-            {/* 5. Pomiary przestrzenne AR */}
-            {activeTool === 'ar_measure' && <ArMeasureTool />}
+              {/* 4. Linijka ekranowa */}
+              {activeTool === 'ruler' && <ScreenCaliperTool />}
 
-            {/* 6. Kompas */}
-            {activeTool === 'compass' && <CompassGpsTool />}
+              {/* 5. Pomiary przestrzenne AR */}
+              {activeTool === 'ar_measure' && <ArMeasureTool />}
 
-            {/* 7. Wysokościomierz */}
-            {activeTool === 'altimeter' && <BarometerAltimeterTool />}
+              {/* 6. Kompas */}
+              {activeTool === 'compass' && <CompassGpsTool />}
 
-            {/* 8. Barometr */}
-            {activeTool === 'barometer' && <BarometerAltimeterTool />}
+              {/* 7. Wysokościomierz */}
+              {activeTool === 'altimeter' && <BarometerAltimeterTool />}
 
-            {/* 9. Termometr i higrometr */}
-            {activeTool === 'thermometer_hygrometer' && <WeatherStationTool />}
+              {/* 8. Barometr */}
+              {activeTool === 'barometer' && <BarometerAltimeterTool />}
 
-            {/* 10. Sejsmograf i wibrometr */}
-            {activeTool === 'seismograph' && (
-              <SeismographTool onSessionSaved={updateLogsCount} soundEnabled={soundEnabled} />
-            )}
+              {/* 9. Termometr i higrometr */}
+              {activeTool === 'thermometer_hygrometer' && <WeatherStationTool />}
 
-            {/* 11. Szybkościomierz */}
-            {activeTool === 'speedometer' && <SpeedometerTool />}
+              {/* 10. Sejsmograf i wibrometr */}
+              {activeTool === 'seismograph' && (
+                <SeismographTool onSessionSaved={updateLogsCount} soundEnabled={soundEnabled} />
+              )}
 
-            {/* 12. GPS i geolokalizator */}
-            {activeTool === 'gps_finder' && <GpsFinderTool />}
+              {/* 11. Szybkościomierz */}
+              {activeTool === 'speedometer' && <SpeedometerTool />}
 
-            {/* 13. Detektor metalu */}
-            {activeTool === 'metal_detector' && <EmfTool soundEnabled={soundEnabled} />}
+              {/* 12. GPS i geolokalizator */}
+              {activeTool === 'gps_finder' && <GpsFinderTool />}
 
-            {/* 14. Detektor pola EMF */}
-            {activeTool === 'emf_meter' && <EmfTool soundEnabled={soundEnabled} />}
+              {/* 13. Detektor metalu */}
+              {activeTool === 'metal_detector' && <EmfTool soundEnabled={soundEnabled} />}
 
-            {/* 15. Skaner kodów kreskowych i QR */}
-            {activeTool === 'qr_barcode_scanner' && <QrBarcodeScannerTool />}
+              {/* 14. Detektor pola EMF */}
+              {activeTool === 'emf_meter' && <EmfTool soundEnabled={soundEnabled} />}
 
-            {/* 16. Lupa z filtrami */}
-            {activeTool === 'magnifier' && <MacroInspectionTool />}
+              {/* 15. Skaner kodów kreskowych i QR */}
+              {activeTool === 'qr_barcode_scanner' && <QrBarcodeScannerTool />}
 
-            {/* 17. Decybelomierz */}
-            {activeTool === 'sound_meter' && <DecibelTool />}
+              {/* 16. Lupa z filtrami */}
+              {activeTool === 'magnifier' && <MacroInspectionTool />}
 
-            {/* 18. Generator częstotliwości */}
-            {activeTool === 'frequency_generator' && <ToneGeneratorTool />}
+              {/* 17. Decybelomierz */}
+              {activeTool === 'sound_meter' && <DecibelTool />}
 
-            {/* 19. Stroboskop */}
-            {activeTool === 'strobe_light' && <StrobeTool />}
+              {/* 18. Generator częstotliwości */}
+              {activeTool === 'frequency_generator' && <ToneGeneratorTool />}
 
-            {/* 20. Lustro */}
-            {activeTool === 'mirror' && <MirrorTool />}
+              {/* 19. Stroboskop */}
+              {activeTool === 'strobe_light' && <StrobeTool />}
 
-            {/* 21. Metronom i stroik muzyczny */}
-            {activeTool === 'metronome_tuner' && <MetronomeTunerTool />}
+              {/* 20. Lustro */}
+              {activeTool === 'mirror' && <MirrorTool />}
 
-            {/* 22. Stoper i minutnik */}
-            {activeTool === 'stopwatch_timer' && <StopwatchTimerTool />}
+              {/* 21. Metronom i stroik muzyczny */}
+              {activeTool === 'metronome_tuner' && <MetronomeTunerTool />}
 
-            {/* 23. Przelicznik jednostek i walut */}
-            {activeTool === 'unit_converter' && <UnitConverterTool />}
+              {/* 22. Stoper i minutnik */}
+              {activeTool === 'stopwatch_timer' && <StopwatchTimerTool />}
 
-            {/* 24. Latarka Morse'a */}
-            {activeTool === 'morse_code' && <MorseCodeTool />}
+              {/* 23. Przelicznik jednostek i walut */}
+              {activeTool === 'unit_converter' && <UnitConverterTool />}
 
-            {/* 25. Test pikseli i ekranu */}
-            {activeTool === 'screen_tester' && <ScreenTesterTool />}
+              {/* 24. Latarka Morse'a */}
+              {activeTool === 'morse_code' && <MorseCodeTool />}
 
-            {/* 26. Informacje o urządzeniu i systemie */}
-            {activeTool === 'device_info' && <DeviceInfoTool />}
+              {/* 25. Test pikseli i ekranu */}
+              {activeTool === 'screen_tester' && <ScreenTesterTool />}
 
-            {/* Druk 3D & Klipper */}
-            {activeTool === 'input_shaper' && (
-              <InputShaperTool
-                klipperHost={klipperHost}
-                isKlipperConnected={klipperState.connected}
-                onSessionSaved={updateLogsCount}
-              />
-            )}
-            {activeTool === 'belt_tuner' && <BeltTunerTool soundEnabled={soundEnabled} />}
-            {activeTool === 'klipper_dashboard' && (
-              <KlipperPanel
-                host={klipperHost}
-                onHostChange={handleHostChange}
-                klipperState={klipperState}
-                onStateUpdate={setKlipperState}
-              />
-            )}
-            {activeTool === 'logs_manager' && <LogsManager onLogsChanged={updateLogsCount} />}
-          </motion.div>
-        </AnimatePresence>
+              {/* 26. Informacje o urządzeniu i systemie */}
+              {activeTool === 'device_info' && <DeviceInfoTool />}
+
+              {/* Druk 3D & Klipper */}
+              {activeTool === 'input_shaper' && (
+                <InputShaperTool
+                  klipperHost={klipperHost}
+                  isKlipperConnected={klipperState.connected}
+                  onSessionSaved={updateLogsCount}
+                />
+              )}
+              {activeTool === 'belt_tuner' && <BeltTunerTool soundEnabled={soundEnabled} />}
+              {activeTool === 'klipper_dashboard' && (
+                <KlipperPanel
+                  host={klipperHost}
+                  onHostChange={handleHostChange}
+                  klipperState={klipperState}
+                  onStateUpdate={setKlipperState}
+                />
+              )}
+              {activeTool === 'logs_manager' && <LogsManager onLogsChanged={updateLogsCount} />}
+            </motion.div>
+          </AnimatePresence>
+        </div>
       </main>
 
-      {/* Floating Action Quick Dial Button (Always accessible) */}
-      <button
-        onClick={() => {
-          triggerHaptic(20);
-          setIsQuickDialOpen(true);
-        }}
-        className="fixed bottom-6 right-6 z-40 bg-amber-400 hover:bg-amber-300 text-slate-950 p-3.5 rounded-full shadow-2xl shadow-amber-500/50 flex items-center justify-center transition-transform hover:scale-110 active:scale-95 cursor-pointer ring-4 ring-slate-900"
-        title="Szybkie Koło Wyboru Modułów"
-      >
-        <Disc className="w-6 h-6 animate-[spin_8s_linear_infinite]" />
-      </button>
-
-      {/* Floating Quick Dial Modal */}
-      <RadialQuickDialModal
-        isOpen={isQuickDialOpen}
-        onClose={() => setIsQuickDialOpen(false)}
-        onSelectTool={setActiveTool}
-        currentTool={activeTool}
-      />
-
-      {/* Bottom Status Bar */}
-      <footer className="bg-slate-900/80 border-t border-slate-900 px-4 py-3 text-[11px] text-slate-500 mt-auto">
-        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2">
-          <span>Workshop MultiTool Pro • Zestaw 26 narzędzi sensorycznych dla Samsung S23 Ultra</span>
-          <div className="flex items-center gap-4">
-            <button
-              onClick={handleOpenRadialHub}
-              className="text-amber-400 hover:underline cursor-pointer"
-            >
-              Koło Wyboru 360°
-            </button>
-            <span>Web APIs: Camera, Audio, Accelerometer, Gyro, Barometer, GPS</span>
+      {/* Retro PC / OS X Bezel Status Footer */}
+      <footer className="retro-bezel border-t border-[#b8b2a5] px-4 py-2.5 text-xs text-[#57534e] mt-auto">
+        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2 font-mono text-[11px]">
+          <div className="flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_5px_#10b981]" />
+            <span className="font-bold text-[#292524]">iX Ai Software • IX Analyzer Workstation</span>
+            <span className="text-[#a8a29e]">|</span>
+            <span>Arch: ARM64 S23 Ultra</span>
+          </div>
+          <div className="flex items-center gap-4 text-[#44403c]">
+            <span>Sensory: Akcelerometr, Żyro, Barometr, GPS, Magnetometr</span>
+            <span className="text-[#0284c7] font-bold">OS X Aqua Style</span>
           </div>
         </div>
       </footer>
