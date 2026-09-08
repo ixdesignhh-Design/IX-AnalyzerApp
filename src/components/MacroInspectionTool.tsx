@@ -8,9 +8,7 @@ import {
   Camera,
   Pause,
   Play,
-  Sliders,
   Focus,
-  Crosshair,
   Sparkles,
   Sun,
   Contrast,
@@ -23,16 +21,16 @@ export const MacroInspectionTool: React.FC = () => {
   const [zoom, setZoom] = useState(2.5);
   const [isFrozen, setIsFrozen] = useState(false);
   const [showGrid, setShowGrid] = useState(true);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   // Manual Focus & Capabilities
   const [focusMode, setFocusMode] = useState<'auto' | 'manual'>('auto');
-  const [focusDistance, setFocusDistance] = useState<number>(0.1); // in meters: 0.05m (5cm macro) to 1.0m
-  const [hasHardwareFocus, setHasHardwareFocus] = useState<boolean>(false);
+  const [focusDistance, setFocusDistance] = useState<number>(0.08); // 8cm default macro
   const [focusPeaking, setFocusPeaking] = useState<boolean>(false);
 
   // Image enhancement filters for black filaments and PEI surfaces
-  const [contrastBoost, setContrastBoost] = useState<number>(115); // 100% to 200%
-  const [brightnessBoost, setBrightnessBoost] = useState<number>(105); // 100% to 150%
+  const [contrastBoost, setContrastBoost] = useState<number>(115);
+  const [brightnessBoost, setBrightnessBoost] = useState<number>(105);
 
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -42,6 +40,7 @@ export const MacroInspectionTool: React.FC = () => {
   const animFrameRef = useRef<number | null>(null);
 
   const startCamera = async () => {
+    setErrorMessage(null);
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
         video: {
@@ -55,26 +54,19 @@ export const MacroInspectionTool: React.FC = () => {
       const track = stream.getVideoTracks()[0];
       trackRef.current = track;
 
-      // Check capabilities for focusDistance & torch
-      const anyTrack = track as any;
-      if (anyTrack.getCapabilities) {
-        const caps = anyTrack.getCapabilities();
-        if (caps.focusMode && caps.focusMode.includes('manual')) {
-          setHasHardwareFocus(true);
-        }
-      }
-
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
-        videoRef.current.play();
+        videoRef.current.play().catch(() => {});
       }
 
       setIsActive(true);
       setIsFrozen(false);
       triggerHaptic(30);
     } catch (e) {
-      alert('Nie udało się uzyskać dostępu do kamery.');
-      console.error(e);
+      console.warn('Camera access error:', e);
+      setErrorMessage(
+        'Brak dostępu do kamery. Upewnij się, że przeglądarka ma zezwolenie na korzystanie z kamery wideo.'
+      );
     }
   };
 
@@ -92,7 +84,6 @@ export const MacroInspectionTool: React.FC = () => {
     }
   };
 
-  // Hardware focus update
   const applyFocusSetting = async (mode: 'auto' | 'manual', distanceVal: number) => {
     const track = trackRef.current;
     if (!track) return;
@@ -109,7 +100,7 @@ export const MacroInspectionTool: React.FC = () => {
         });
       }
     } catch (err) {
-      console.warn('Manual focus constraint not accepted by hardware driver', err);
+      console.warn('Manual focus constraint not accepted by camera driver', err);
     }
   };
 
@@ -137,7 +128,7 @@ export const MacroInspectionTool: React.FC = () => {
       setTorchOn(newState);
       triggerHaptic(20);
     } catch (err) {
-      alert('Lampa błyskowa może nie być dostępna w przeglądarce.');
+      console.warn('Torch not supported on this track', err);
     }
   };
 
@@ -186,7 +177,6 @@ export const MacroInspectionTool: React.FC = () => {
           const imgData = ctx.getImageData(0, 0, width, height);
           const d = imgData.data;
 
-          // Simple Sobel edge magnitude filter
           for (let y = 1; y < height - 1; y += 2) {
             for (let x = 1; x < width - 1; x += 2) {
               const i = (y * width + x) * 4;
@@ -195,13 +185,12 @@ export const MacroInspectionTool: React.FC = () => {
 
               const diff = Math.abs(d[i] - d[right]) + Math.abs(d[i] - d[down]);
               if (diff > 45) {
-                // Highlight focused edge with neon green
                 d[i] = 0;
                 d[i + 1] = 255;
                 d[i + 2] = 120;
                 d[i + 3] = 255;
               } else {
-                d[i + 3] = 0; // transparent
+                d[i + 3] = 0;
               }
             }
           }
@@ -229,15 +218,15 @@ export const MacroInspectionTool: React.FC = () => {
 
   return (
     <div className="space-y-4">
-      {/* Header */}
-      <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+      {/* OS X Workstation Card Header */}
+      <div className="retro-bezel rounded-xl p-4 border border-[#b6b0a3] shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h2 className="text-lg font-bold text-slate-100 flex items-center gap-2">
-            <Eye className="w-5 h-5 text-amber-400" />
-            Lupa Inspekcyjna Makro z Ręczną Ostrością (Focus Control)
+          <h2 className="text-base font-bold text-[#1c1917] flex items-center gap-2">
+            <Eye className="w-5 h-5 text-[#0284c7]" />
+            Lupa Inspekcyjna Makro (Manual Focus & Peaking)
           </h2>
-          <p className="text-xs text-slate-400 mt-0.5">
-            Ręczna regulacja ostrości (makro 5cm - 1m), podświetlenie krawędzi (Focus Peaking), powiększenie do 8x i siatka kalibracji pierwszej warstwy.
+          <p className="text-xs text-[#57534e] mt-0.5 font-sans">
+            Ręczna regulacja ostrości obiektywu S23 Ultra (od 3cm do 60cm), podświetlenie krawędzi (Focus Peaking), powiększenie do 8x i siatka kalibracyjna.
           </p>
         </div>
 
@@ -245,7 +234,7 @@ export const MacroInspectionTool: React.FC = () => {
           {!isActive ? (
             <button
               onClick={startCamera}
-              className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold px-4 py-2 rounded-lg cursor-pointer"
+              className="aqua-button-primary flex items-center gap-2 text-xs font-bold px-4 py-2 rounded-lg cursor-pointer"
             >
               <Camera className="w-4 h-4" />
               <span>Włącz Kamerę Makro</span>
@@ -253,7 +242,7 @@ export const MacroInspectionTool: React.FC = () => {
           ) : (
             <button
               onClick={stopCamera}
-              className="flex items-center gap-2 bg-red-600 hover:bg-red-500 text-white text-xs font-semibold px-4 py-2 rounded-lg cursor-pointer"
+              className="bg-red-600 hover:bg-red-500 text-white text-xs font-bold px-4 py-2 rounded-lg cursor-pointer shadow flex items-center gap-2"
             >
               <EyeOff className="w-4 h-4" />
               <span>Wyłącz</span>
@@ -262,15 +251,23 @@ export const MacroInspectionTool: React.FC = () => {
         </div>
       </div>
 
-      {/* Main Viewport */}
-      <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 shadow-sm space-y-4">
-        <div className="relative rounded-lg overflow-hidden bg-black aspect-[4/3] sm:aspect-[16/9] border border-slate-800 flex items-center justify-center">
+      {errorMessage && (
+        <div className="bg-amber-100 border border-amber-400 text-amber-900 p-3 rounded-xl text-xs font-sans">
+          {errorMessage}
+        </div>
+      )}
+
+      {/* Main Viewport inside CRT Glass Frame */}
+      <div className="retro-screen-crt rounded-2xl p-4 shadow-2xl space-y-4">
+        <div className="relative rounded-xl overflow-hidden bg-black aspect-[4/3] sm:aspect-[16/9] border-2 border-[#334155] flex items-center justify-center">
           {/* Live Video */}
           <video
             ref={videoRef}
             playsInline
             muted
-            className={`w-full h-full object-cover transition-transform duration-100 ${isFrozen ? 'hidden' : 'block'}`}
+            className={`w-full h-full object-cover transition-transform duration-100 ${
+              isFrozen ? 'hidden' : 'block'
+            }`}
             style={{
               transform: `scale(${zoom})`,
               filter: `contrast(${contrastBoost}%) brightness(${brightnessBoost}%)`,
@@ -280,7 +277,9 @@ export const MacroInspectionTool: React.FC = () => {
           {/* Frozen Canvas */}
           <canvas
             ref={canvasRef}
-            className={`w-full h-full object-cover transition-transform duration-100 ${isFrozen ? 'block' : 'hidden'}`}
+            className={`w-full h-full object-cover transition-transform duration-100 ${
+              isFrozen ? 'block' : 'hidden'
+            }`}
             style={{ transform: `scale(${zoom})` }}
           />
 
@@ -295,11 +294,11 @@ export const MacroInspectionTool: React.FC = () => {
 
           {/* Not Active Overlay */}
           {!isActive && (
-            <div className="text-center text-slate-500 p-6 space-y-2">
-              <Eye className="w-12 h-12 mx-auto text-slate-600" />
-              <div className="text-sm font-medium">Kamera makro jest wyłączona</div>
-              <p className="text-xs max-w-xs text-slate-600">
-                Włącz kamerę, zbliż obiektyw na 3–5 cm od dyszy lub pierwszej warstwy i skorzystaj z suwaka ostrości.
+            <div className="text-center text-[#94a3b8] p-6 space-y-2">
+              <Eye className="w-12 h-12 mx-auto text-[#64748b]" />
+              <div className="text-sm font-bold font-mono text-[#cbd5e1]">Kamera makro jest wyłączona</div>
+              <p className="text-xs max-w-xs text-[#94a3b8] font-sans">
+                Włącz kamerę, zbliż obiektyw na 3–5 cm od dyszy lub pierwszej warstwy i skorzystaj z suwaka ręcznej ostrości.
               </p>
             </div>
           )}
@@ -307,25 +306,25 @@ export const MacroInspectionTool: React.FC = () => {
           {/* Grid Overlay */}
           {isActive && showGrid && (
             <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
-              <div className="w-full h-[1px] bg-amber-400/40" />
-              <div className="h-full w-[1px] bg-amber-400/40 absolute" />
-              <div className="w-24 h-24 rounded-full border border-amber-400/40 absolute" />
-              <div className="w-48 h-48 rounded-full border border-amber-400/20 absolute" />
-              <div className="absolute top-4 left-4 bg-slate-950/80 backdrop-blur px-2.5 py-1 rounded text-[11px] font-mono text-amber-300 border border-slate-800">
+              <div className="w-full h-[1px] bg-[#38bdf8]/40" />
+              <div className="h-full w-[1px] bg-[#38bdf8]/40 absolute" />
+              <div className="w-24 h-24 rounded-full border border-[#38bdf8]/40 absolute" />
+              <div className="w-48 h-48 rounded-full border border-[#38bdf8]/20 absolute" />
+              <div className="absolute top-4 left-4 bg-[#0a0d12]/80 backdrop-blur px-2.5 py-1 rounded text-[11px] font-mono text-emerald-400 border border-[#334155]">
                 Siatka Makro Z-Offset (0.1mm - 0.2mm)
               </div>
             </div>
           )}
 
           {/* Status badges */}
-          <div className="absolute top-4 right-4 flex flex-col gap-1 items-end pointer-events-none">
+          <div className="absolute top-4 right-4 flex flex-col gap-1 items-end pointer-events-none font-mono text-xs">
             {isFrozen && (
-              <div className="bg-red-500/90 text-white font-bold text-xs px-2.5 py-1 rounded shadow-lg animate-pulse">
+              <div className="bg-red-600 text-white font-bold px-2.5 py-1 rounded shadow-lg animate-pulse">
                 KLATKA ZAMROŻONA (PAUZA)
               </div>
             )}
             {focusPeaking && (
-              <div className="bg-emerald-500/90 text-slate-950 font-bold text-xs px-2.5 py-1 rounded shadow">
+              <div className="bg-emerald-500 text-slate-950 font-bold px-2.5 py-1 rounded shadow">
                 PEAKING AKTYWNY (KONTURY OSTROŚCI)
               </div>
             )}
@@ -336,9 +335,9 @@ export const MacroInspectionTool: React.FC = () => {
         {isActive && (
           <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
             {/* Zoom Slider */}
-            <div className="flex items-center gap-3 w-full sm:w-auto">
-              <ZoomIn className="w-4 h-4 text-slate-400" />
-              <span className="text-xs text-slate-400">Zoom:</span>
+            <div className="flex items-center gap-3 w-full sm:w-auto font-mono text-xs text-[#cbd5e1]">
+              <ZoomIn className="w-4 h-4 text-[#38bdf8]" />
+              <span>Zoom:</span>
               <input
                 type="range"
                 min={1.0}
@@ -346,54 +345,44 @@ export const MacroInspectionTool: React.FC = () => {
                 step={0.1}
                 value={zoom}
                 onChange={(e) => setZoom(Number(e.target.value))}
-                className="w-32 sm:w-40 accent-amber-500 cursor-pointer"
+                className="w-32 sm:w-40 accent-[#0284c7] cursor-pointer"
               />
-              <span className="font-mono text-xs text-slate-200 font-bold">{zoom.toFixed(1)}x</span>
+              <span className="text-emerald-400 font-bold">{zoom.toFixed(1)}x</span>
             </div>
 
             <div className="flex flex-wrap items-center gap-2">
               <button
                 onClick={toggleTorch}
-                className={`flex items-center gap-1.5 text-xs px-3 py-2 rounded-lg border font-medium transition-colors cursor-pointer ${
-                  torchOn
-                    ? 'bg-amber-500 text-slate-950 border-amber-400 font-bold'
-                    : 'bg-slate-800 text-slate-300 border-slate-700 hover:bg-slate-700'
+                className={`aqua-button flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg font-semibold cursor-pointer ${
+                  torchOn ? 'text-amber-500 font-bold' : ''
                 }`}
               >
-                {torchOn ? <Flashlight className="w-3.5 h-3.5" /> : <FlashlightOff className="w-3.5 h-3.5" />}
+                {torchOn ? <Flashlight className="w-3.5 h-3.5 text-amber-500" /> : <FlashlightOff className="w-3.5 h-3.5" />}
                 <span>{torchOn ? 'Latarka WŁ' : 'Latarka'}</span>
               </button>
 
               <button
                 onClick={() => setFocusPeaking(!focusPeaking)}
-                className={`flex items-center gap-1.5 text-xs px-3 py-2 rounded-lg border font-medium cursor-pointer transition-colors ${
-                  focusPeaking
-                    ? 'bg-emerald-500 text-slate-950 border-emerald-400 font-bold'
-                    : 'bg-slate-800 text-slate-300 border-slate-700 hover:bg-slate-700'
+                className={`aqua-button flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg font-semibold cursor-pointer ${
+                  focusPeaking ? 'text-emerald-600 font-bold' : ''
                 }`}
               >
-                <Sparkles className="w-3.5 h-3.5" />
+                <Sparkles className="w-3.5 h-3.5 text-emerald-500" />
                 <span>Focus Peaking</span>
               </button>
 
               <button
                 onClick={() => setShowGrid(!showGrid)}
-                className={`text-xs px-3 py-2 rounded-lg border font-medium cursor-pointer ${
-                  showGrid ? 'bg-slate-800 text-amber-400 border-amber-500/40' : 'bg-slate-950 text-slate-500 border-slate-800'
-                }`}
+                className="aqua-button text-xs px-3 py-1.5 rounded-lg font-semibold cursor-pointer"
               >
-                Siatka
+                Siatka {showGrid ? 'WŁ' : 'WYŁ'}
               </button>
 
               <button
                 onClick={toggleFreeze}
-                className={`flex items-center gap-1.5 text-xs px-3 py-2 rounded-lg border font-semibold cursor-pointer ${
-                  isFrozen
-                    ? 'bg-emerald-600 text-white border-emerald-500'
-                    : 'bg-slate-800 text-slate-200 border-slate-700 hover:bg-slate-700'
-                }`}
+                className="aqua-button flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg font-semibold cursor-pointer"
               >
-                {isFrozen ? <Play className="w-3.5 h-3.5" /> : <Pause className="w-3.5 h-3.5" />}
+                {isFrozen ? <Play className="w-3.5 h-3.5 text-[#0284c7]" /> : <Pause className="w-3.5 h-3.5 text-[#0284c7]" />}
                 <span>{isFrozen ? 'Odmroź' : 'Zamroź klatkę'}</span>
               </button>
             </div>
@@ -402,19 +391,19 @@ export const MacroInspectionTool: React.FC = () => {
 
         {/* Dedicated Focus Controls Panel */}
         {isActive && (
-          <div className="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-3">
+          <div className="bg-[#0a0d12] p-4 rounded-xl border border-[#334155] space-y-3">
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2 text-xs font-bold text-slate-200">
-                <Focus className="w-4 h-4 text-amber-400" />
+              <div className="flex items-center gap-2 text-xs font-bold font-mono text-[#cbd5e1]">
+                <Focus className="w-4 h-4 text-[#38bdf8]" />
                 <span>Regulacja Ostrości Obiektywu (Focus Control)</span>
               </div>
 
               {/* Auto vs Manual Focus Switch */}
-              <div className="flex bg-slate-900 p-1 rounded-lg border border-slate-800 text-xs">
+              <div className="flex bg-[#1e293b] p-0.5 rounded-lg border border-[#334155] text-xs font-mono">
                 <button
                   onClick={() => handleFocusModeChange('auto')}
                   className={`px-3 py-1 rounded transition-colors cursor-pointer ${
-                    focusMode === 'auto' ? 'bg-amber-500 text-slate-950 font-bold' : 'text-slate-400 hover:text-white'
+                    focusMode === 'auto' ? 'aqua-button-primary font-bold' : 'text-[#94a3b8]'
                   }`}
                 >
                   Auto Focus (AF)
@@ -422,7 +411,7 @@ export const MacroInspectionTool: React.FC = () => {
                 <button
                   onClick={() => handleFocusModeChange('manual')}
                   className={`px-3 py-1 rounded transition-colors cursor-pointer ${
-                    focusMode === 'manual' ? 'bg-amber-500 text-slate-950 font-bold' : 'text-slate-400 hover:text-white'
+                    focusMode === 'manual' ? 'aqua-button-primary font-bold' : 'text-[#94a3b8]'
                   }`}
                 >
                   Manual Focus (MF)
@@ -433,9 +422,9 @@ export const MacroInspectionTool: React.FC = () => {
             {/* Manual focus distance slider */}
             {focusMode === 'manual' && (
               <div className="space-y-1.5 pt-1">
-                <div className="flex justify-between text-xs text-slate-400">
-                  <span>Odległość ogniskowania:</span>
-                  <span className="font-mono font-bold text-amber-400">
+                <div className="flex justify-between text-xs font-mono text-[#94a3b8]">
+                  <span>Odległość ogniskowania soczewki:</span>
+                  <span className="text-emerald-400 font-bold">
                     {(focusDistance * 100).toFixed(0)} cm {focusDistance <= 0.08 ? '(Makro Ekstremalne)' : ''}
                   </span>
                 </div>
@@ -446,24 +435,24 @@ export const MacroInspectionTool: React.FC = () => {
                   step={0.01}
                   value={focusDistance}
                   onChange={(e) => handleFocusDistanceChange(Number(e.target.value))}
-                  className="w-full accent-amber-500 cursor-pointer"
+                  className="w-full accent-[#0284c7] cursor-pointer"
                 />
-                <div className="flex justify-between text-[10px] text-slate-500 font-mono">
+                <div className="flex justify-between text-[10px] text-[#64748b] font-mono">
                   <span>3 cm (Super Makro dyszy)</span>
                   <span>10 cm (Stół roboczy)</span>
-                  <span>60 cm (Cała drukarka)</span>
+                  <span>60 cm (Plan ogólny)</span>
                 </div>
               </div>
             )}
 
             {/* Contrast & Brightness Enhancements */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-slate-800/80">
-              <div className="space-y-1">
-                <div className="flex justify-between text-xs text-slate-400">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-[#1e293b]">
+              <div className="space-y-1 font-mono text-xs text-[#94a3b8]">
+                <div className="flex justify-between">
                   <span className="flex items-center gap-1">
-                    <Contrast className="w-3 h-3 text-slate-400" /> Kontrast:
+                    <Contrast className="w-3 h-3 text-[#38bdf8]" /> Kontrast:
                   </span>
-                  <span className="font-mono text-slate-200">{contrastBoost}%</span>
+                  <span className="text-emerald-400">{contrastBoost}%</span>
                 </div>
                 <input
                   type="range"
@@ -472,16 +461,16 @@ export const MacroInspectionTool: React.FC = () => {
                   step={5}
                   value={contrastBoost}
                   onChange={(e) => setContrastBoost(Number(e.target.value))}
-                  className="w-full accent-amber-500 cursor-pointer"
+                  className="w-full accent-[#0284c7] cursor-pointer"
                 />
               </div>
 
-              <div className="space-y-1">
-                <div className="flex justify-between text-xs text-slate-400">
+              <div className="space-y-1 font-mono text-xs text-[#94a3b8]">
+                <div className="flex justify-between">
                   <span className="flex items-center gap-1">
-                    <Sun className="w-3 h-3 text-slate-400" /> Jasność (dla czarnych filamentów):
+                    <Sun className="w-3 h-3 text-[#38bdf8]" /> Jasność (czarne filamenty):
                   </span>
-                  <span className="font-mono text-slate-200">{brightnessBoost}%</span>
+                  <span className="text-emerald-400">{brightnessBoost}%</span>
                 </div>
                 <input
                   type="range"
@@ -490,7 +479,7 @@ export const MacroInspectionTool: React.FC = () => {
                   step={5}
                   value={brightnessBoost}
                   onChange={(e) => setBrightnessBoost(Number(e.target.value))}
-                  className="w-full accent-amber-500 cursor-pointer"
+                  className="w-full accent-[#0284c7] cursor-pointer"
                 />
               </div>
             </div>

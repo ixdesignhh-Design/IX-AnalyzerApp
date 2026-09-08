@@ -3,12 +3,8 @@ import {
   Maximize,
   Camera,
   EyeOff,
-  RotateCcw,
   Plus,
   Trash2,
-  Box,
-  Layers,
-  Info,
 } from 'lucide-react';
 import { triggerHaptic } from '../utils/sensors';
 
@@ -20,18 +16,26 @@ interface Point3D {
 
 export const ArMeasureTool: React.FC = () => {
   const [isActive, setIsActive] = useState(false);
-  const [phoneHeightCm, setPhoneHeightCm] = useState(140); // User eye/phone level in cm
+  const [phoneHeightCm, setPhoneHeightCm] = useState<number>(() => {
+    return parseInt(localStorage.getItem('ix_phone_height_cm') || '140', 10);
+  });
   const [pitch, setPitch] = useState(0);
   const [points, setPoints] = useState<Point3D[]>([]);
   const [calculatedDistanceM, setCalculatedDistanceM] = useState<number>(0);
   const [roomAreaM2, setRoomAreaM2] = useState<number>(0);
   const [roomVolumeM3, setRoomVolumeM3] = useState<number>(0);
   const [ceilingHeightM, setCeilingHeightM] = useState<number>(2.5);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
 
+  useEffect(() => {
+    localStorage.setItem('ix_phone_height_cm', phoneHeightCm.toString());
+  }, [phoneHeightCm]);
+
   const startCamera = async () => {
+    setErrorMessage(null);
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
         video: { facingMode: { ideal: 'environment' } },
@@ -39,12 +43,12 @@ export const ArMeasureTool: React.FC = () => {
       streamRef.current = stream;
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
-        videoRef.current.play();
+        videoRef.current.play().catch(() => {});
       }
       setIsActive(true);
       triggerHaptic(25);
     } catch (e) {
-      alert('Brak dostępu do kamery.');
+      setErrorMessage('Brak dostępu do kamery urządzenia.');
     }
   };
 
@@ -60,9 +64,6 @@ export const ArMeasureTool: React.FC = () => {
     const handleOrientation = (e: DeviceOrientationEvent) => {
       if (e.beta !== null) {
         setPitch(e.beta);
-        // Distance calculation by trigonometric projection
-        // If phone is tilted downwards at angle theta (from vertical/horizontal)
-        // distance = height / tan(angle)
         const rad = ((90 - Math.abs(e.beta)) * Math.PI) / 180;
         if (rad > 0.05) {
           const dist = (phoneHeightCm / 100) * Math.tan(rad);
@@ -88,9 +89,7 @@ export const ArMeasureTool: React.FC = () => {
     const updated = [...points, newPt];
     setPoints(updated);
 
-    // If 3 or more points, calculate polygon area
     if (updated.length >= 3) {
-      // Shoelace approximation
       let a = 0;
       for (let i = 0; i < updated.length; i++) {
         const j = (i + 1) % updated.length;
@@ -112,15 +111,15 @@ export const ArMeasureTool: React.FC = () => {
 
   return (
     <div className="space-y-4">
-      {/* Header */}
-      <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+      {/* Retro OS X Header */}
+      <div className="retro-bezel rounded-xl p-4 border border-[#b6b0a3] shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h2 className="text-lg font-bold text-slate-100 flex items-center gap-2">
-            <Maximize className="w-5 h-5 text-indigo-400" />
-            Pomiary Przestrzenne AR (Odległość, Powierzchnia, Kubatura)
+          <h2 className="text-base font-bold text-[#1c1917] flex items-center gap-2">
+            <Maximize className="w-5 h-5 text-[#0284c7]" />
+            Pomiary Przestrzenne AR (Dalmierz, Metraż m², Kubatura m³)
           </h2>
-          <p className="text-xs text-slate-400 mt-0.5">
-            Dalmierz optyczno-żyroskopowy, wyznaczanie odległości podłogi, metrażu pomieszczeń (m²) i kubatury (m³).
+          <p className="text-xs text-[#57534e] mt-0.5 font-sans">
+            Dalmierz optyczno-żyroskopowy, wyznaczanie odległości podłogi, obrysu powierzchni pomieszczeń i kubatury.
           </p>
         </div>
 
@@ -128,7 +127,7 @@ export const ArMeasureTool: React.FC = () => {
           {!isActive ? (
             <button
               onClick={startCamera}
-              className="flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold px-3 py-2 rounded-lg cursor-pointer"
+              className="aqua-button-primary flex items-center gap-1.5 text-xs font-bold px-4 py-2 rounded-lg cursor-pointer"
             >
               <Camera className="w-3.5 h-3.5" />
               <span>Włącz Kamerę AR</span>
@@ -136,7 +135,7 @@ export const ArMeasureTool: React.FC = () => {
           ) : (
             <button
               onClick={stopCamera}
-              className="flex items-center gap-1.5 bg-red-600 hover:bg-red-500 text-white text-xs font-semibold px-3 py-2 rounded-lg cursor-pointer"
+              className="bg-red-600 hover:bg-red-500 text-white text-xs font-bold px-4 py-2 rounded-lg cursor-pointer flex items-center gap-1.5 shadow"
             >
               <EyeOff className="w-3.5 h-3.5" />
               <span>Wyłącz</span>
@@ -145,9 +144,14 @@ export const ArMeasureTool: React.FC = () => {
         </div>
       </div>
 
-      {/* Main Viewport */}
-      <div className="relative bg-slate-900 border border-slate-800 rounded-xl overflow-hidden aspect-[4/3] sm:aspect-[16/9] flex items-center justify-center">
-        {/* Live Video */}
+      {errorMessage && (
+        <div className="bg-amber-100 border border-amber-400 text-amber-900 p-3 rounded-xl text-xs font-sans">
+          {errorMessage}
+        </div>
+      )}
+
+      {/* Main Viewport inside CRT Frame */}
+      <div className="relative retro-screen-crt rounded-2xl overflow-hidden aspect-[4/3] sm:aspect-[16/9] flex items-center justify-center shadow-2xl">
         <video
           ref={videoRef}
           playsInline
@@ -156,11 +160,11 @@ export const ArMeasureTool: React.FC = () => {
         />
 
         {!isActive && (
-          <div className="text-center text-slate-500 p-6 space-y-2">
-            <Maximize className="w-12 h-12 mx-auto text-slate-600" />
-            <div className="text-sm font-medium">Kamera dalmierza AR jest wyłączona</div>
-            <p className="text-xs text-slate-500 max-w-xs">
-              Włącz kamerę, wyceluj celownik w styk podłogi ze ścianą, aby natychmiast odczytać odległość i dodać narożniki pokoju.
+          <div className="text-center text-[#94a3b8] p-6 space-y-2">
+            <Maximize className="w-12 h-12 mx-auto text-[#64748b]" />
+            <div className="text-sm font-bold font-mono text-[#cbd5e1]">Kamera dalmierza AR jest wyłączona</div>
+            <p className="text-xs text-[#94a3b8] max-w-xs font-sans">
+              Włącz kamerę, wyceluj w styk podłogi ze ścianą, aby odczytać odległość i dodawać kolejne punkty obrysu pokoju.
             </p>
           </div>
         )}
@@ -168,22 +172,21 @@ export const ArMeasureTool: React.FC = () => {
         {/* Reticle Crosshair */}
         {isActive && (
           <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
-            <div className="w-12 h-12 border-2 border-indigo-400 rounded-full flex items-center justify-center">
+            <div className="w-12 h-12 border-2 border-[#38bdf8] rounded-full flex items-center justify-center">
               <div className="w-2 h-2 bg-amber-400 rounded-full animate-ping" />
             </div>
-            {/* Real-time distance tag on reticle */}
-            <div className="absolute mt-20 bg-slate-950/90 text-amber-300 font-mono font-bold text-xs px-3 py-1 rounded-full border border-slate-800 shadow">
+            <div className="absolute mt-20 bg-black/80 text-emerald-400 font-mono font-bold text-xs px-3 py-1 rounded-full border border-[#334155] shadow">
               Dystans: {calculatedDistanceM.toFixed(2)} m
             </div>
           </div>
         )}
 
-        {/* Floating Controls inside HUD */}
+        {/* Floating Controls */}
         {isActive && (
           <div className="absolute bottom-4 inset-x-4 flex items-center justify-between pointer-events-auto">
             <button
               onClick={clearPoints}
-              className="flex items-center gap-1.5 bg-slate-950/80 hover:bg-slate-900 text-slate-300 text-xs px-3 py-2 rounded-lg border border-slate-700 backdrop-blur cursor-pointer"
+              className="aqua-button flex items-center gap-1.5 text-xs px-3 py-2 rounded-lg cursor-pointer"
             >
               <Trash2 className="w-3.5 h-3.5" />
               <span>Wyczyść punkty</span>
@@ -191,41 +194,58 @@ export const ArMeasureTool: React.FC = () => {
 
             <button
               onClick={addPoint}
-              className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold px-5 py-2.5 rounded-full shadow-lg shadow-indigo-600/40 cursor-pointer"
+              className="aqua-button-primary flex items-center gap-2 text-xs font-bold px-5 py-2.5 rounded-full shadow-lg cursor-pointer"
             >
               <Plus className="w-4 h-4" />
-              <span>Zaznacz Punkt ({points.length})</span>
+              <span>Dodaj Punkt ({points.length})</span>
             </button>
           </div>
         )}
       </div>
 
-      {/* Results & Settings Grid */}
+      {/* Results & Calibration Bar */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        <div className="bg-slate-900 p-4 rounded-xl border border-slate-800 flex flex-col justify-between">
-          <div className="text-[10px] uppercase font-bold text-slate-400">Odległość do celu</div>
-          <div className="text-3xl font-black font-mono text-amber-400 mt-1">
+        <div className="retro-bezel p-4 rounded-xl border border-[#b6b0a3] flex flex-col justify-between">
+          <div className="text-[10px] uppercase font-bold text-[#57534e]">Odległość do celu</div>
+          <div className="text-3xl font-black font-mono text-[#0284c7] mt-1">
             {calculatedDistanceM.toFixed(2)} m
           </div>
-          <div className="text-[11px] text-slate-500">Rzut trygonometryczny</div>
+          <div className="text-[11px] text-[#78716c]">Rzut trygonometryczny</div>
         </div>
 
-        <div className="bg-slate-900 p-4 rounded-xl border border-slate-800 flex flex-col justify-between">
-          <div className="text-[10px] uppercase font-bold text-slate-400">Powierzchnia pomieszczenia</div>
-          <div className="text-3xl font-black font-mono text-indigo-400 mt-1">
+        <div className="retro-bezel p-4 rounded-xl border border-[#b6b0a3] flex flex-col justify-between">
+          <div className="text-[10px] uppercase font-bold text-[#57534e]">Powierzchnia (Metraż)</div>
+          <div className="text-3xl font-black font-mono text-emerald-700 mt-1">
             {roomAreaM2 > 0 ? `${roomAreaM2.toFixed(1)} m²` : '-- m²'}
           </div>
-          <div className="text-[11px] text-slate-500">
-            {points.length < 3 ? 'Zaznacz min. 3 narożniki' : `${points.length} punktów obrysu`}
+          <div className="text-[11px] text-[#78716c]">
+            {points.length < 3 ? 'Zaznacz min. 3 punkty' : `${points.length} punktów`}
           </div>
         </div>
 
-        <div className="bg-slate-900 p-4 rounded-xl border border-slate-800 flex flex-col justify-between">
-          <div className="text-[10px] uppercase font-bold text-slate-400">Kubatura (Objętość)</div>
-          <div className="text-3xl font-black font-mono text-emerald-400 mt-1">
+        <div className="retro-bezel p-4 rounded-xl border border-[#b6b0a3] flex flex-col justify-between">
+          <div className="text-[10px] uppercase font-bold text-[#57534e]">Kubatura (Objętość)</div>
+          <div className="text-3xl font-black font-mono text-amber-700 mt-1">
             {roomVolumeM3 > 0 ? `${roomVolumeM3.toFixed(1)} m³` : '-- m³'}
           </div>
-          <div className="text-[11px] text-slate-500">Wys. sufitu: {ceilingHeightM} m</div>
+          <div className="text-[11px] text-[#78716c]">Wysokość sufitu: {ceilingHeightM} m</div>
+        </div>
+      </div>
+
+      {/* Height Calibration */}
+      <div className="retro-bezel p-3.5 rounded-xl border border-[#b8b2a5] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs">
+        <div className="flex items-center gap-3 w-full sm:w-auto">
+          <span className="text-[#292524] font-bold whitespace-nowrap">Wysokość trzymania telefonu:</span>
+          <input
+            type="range"
+            min={100}
+            max={190}
+            step={1}
+            value={phoneHeightCm}
+            onChange={(e) => setPhoneHeightCm(Number(e.target.value))}
+            className="w-40 accent-[#0284c7] cursor-pointer"
+          />
+          <span className="font-mono text-[#0284c7] font-bold">{phoneHeightCm} cm</span>
         </div>
       </div>
     </div>

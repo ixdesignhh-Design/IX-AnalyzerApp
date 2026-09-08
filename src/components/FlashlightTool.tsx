@@ -3,11 +3,7 @@ import {
   Flashlight,
   FlashlightOff,
   Sun,
-  Radio,
-  Sliders,
   Palette,
-  AlertTriangle,
-  RotateCcw,
 } from 'lucide-react';
 import { triggerHaptic } from '../utils/sensors';
 
@@ -76,11 +72,10 @@ export const FlashlightTool: React.FC = () => {
         await setTorchState(current);
       }, intervalMs);
     } else if (mode === 'sos' && torchOn) {
-      // SOS pattern: 3 short, 3 long, 3 short (... --- ...)
       const timings = [
-        150, 150, 150, 150, 150, 300, // S
-        400, 200, 400, 200, 400, 300, // O
-        150, 150, 150, 150, 150, 800, // S
+        150, 150, 150, 150, 150, 300,
+        400, 200, 400, 200, 400, 300,
+        150, 150, 150, 150, 150, 800,
       ];
       let step = 0;
       const runSos = async () => {
@@ -137,43 +132,43 @@ export const FlashlightTool: React.FC = () => {
             opacity: screenBrightness / 100,
           }}
         >
-          <div className="bg-slate-950/80 text-white text-xs px-4 py-2 rounded-full backdrop-blur border border-white/20">
-            Dotknij ekranu, aby wyłączyć oświetlenie
+          <div className="bg-black/80 text-white text-xs px-4 py-2 rounded-full backdrop-blur border border-white/20 font-mono">
+            Dotknij ekranu, aby zamknąć softbox
           </div>
         </div>
       )}
 
-      {/* Header */}
-      <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+      {/* Retro OS X Header */}
+      <div className="retro-bezel rounded-xl p-4 border border-[#b6b0a3] shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h2 className="text-lg font-bold text-slate-100 flex items-center gap-2">
-            <Flashlight className="w-5 h-5 text-amber-400" />
+          <h2 className="text-base font-bold text-[#1c1917] flex items-center gap-2">
+            <Flashlight className="w-5 h-5 text-[#0284c7]" />
             Latarka & Oświetlenie Wielozadaniowe
           </h2>
-          <p className="text-xs text-slate-400 mt-0.5">
-            Dioda LED z regulacją stroboskopu i SOS oraz tryb świecenia ekranu (Softbox RGB) do fotografii makro i prac precyzyjnych.
+          <p className="text-xs text-[#57534e] mt-0.5 font-sans">
+            Dioda LED z regulacją stroboskopu i SOS oraz tryb świecenia ekranem (Softbox RGB) do prac inspekcyjnych.
           </p>
         </div>
 
         <div className="flex items-center gap-2">
           <button
             onClick={() => setScreenLightOn(true)}
-            className="flex items-center gap-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-semibold px-3 py-2 rounded-lg cursor-pointer transition-colors"
+            className="aqua-button flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg cursor-pointer"
           >
-            <Sun className="w-4 h-4 text-amber-300" />
+            <Sun className="w-4 h-4 text-amber-500" />
             <span>Świecenie Ekranem</span>
           </button>
         </div>
       </div>
 
-      {/* Main Big Button */}
-      <div className="bg-slate-900 border border-slate-800 rounded-xl p-8 flex flex-col items-center justify-center space-y-6">
+      {/* Main Big Switch & Controls */}
+      <div className="retro-screen-crt rounded-2xl p-8 flex flex-col items-center justify-center space-y-6 shadow-2xl">
         <button
           onClick={toggleTorch}
           className={`w-40 h-40 sm:w-48 sm:h-48 rounded-full flex flex-col items-center justify-center border-4 shadow-2xl transition-all active:scale-95 cursor-pointer ${
             torchOn
-              ? 'bg-amber-400 text-slate-950 border-amber-300 shadow-amber-500/50 scale-105'
-              : 'bg-slate-950 text-slate-400 border-slate-800 hover:border-slate-700 shadow-inner'
+              ? 'bg-amber-400 text-slate-950 border-amber-300 shadow-[0_0_35px_rgba(251,191,36,0.6)] scale-105'
+              : 'bg-[#0a0d12] text-[#64748b] border-[#334155] hover:border-[#475569] shadow-inner'
           }`}
         >
           {torchOn ? (
@@ -181,20 +176,20 @@ export const FlashlightTool: React.FC = () => {
           ) : (
             <FlashlightOff className="w-16 h-16 sm:w-20 sm:h-20" />
           )}
-          <span className="font-black text-sm sm:text-base mt-2 tracking-wider uppercase">
+          <span className="font-mono font-black text-sm sm:text-base mt-2 tracking-wider uppercase">
             {torchOn ? 'WŁĄCZONA' : 'WYŁĄCZONA'}
           </span>
         </button>
 
         {/* Mode Selector */}
-        <div className="grid grid-cols-3 gap-2 w-full max-w-md bg-slate-950 p-1.5 rounded-xl border border-slate-800">
+        <div className="grid grid-cols-3 gap-2 w-full max-w-md bg-[#0a0d12] p-1 rounded-xl border border-[#334155]">
           <button
             onClick={() => {
               setMode('torch');
               triggerHaptic(20);
             }}
-            className={`py-2 text-xs font-bold rounded-lg transition-colors cursor-pointer ${
-              mode === 'torch' ? 'bg-amber-500 text-slate-950' : 'text-slate-400 hover:text-white'
+            className={`py-2 text-xs font-mono font-bold rounded-lg transition-colors cursor-pointer ${
+              mode === 'torch' ? 'aqua-button-primary' : 'text-[#94a3b8] hover:text-white'
             }`}
           >
             Ciągłe Świecenie
@@ -204,8 +199,8 @@ export const FlashlightTool: React.FC = () => {
               setMode('strobe');
               triggerHaptic(20);
             }}
-            className={`py-2 text-xs font-bold rounded-lg transition-colors cursor-pointer ${
-              mode === 'strobe' ? 'bg-amber-500 text-slate-950' : 'text-slate-400 hover:text-white'
+            className={`py-2 text-xs font-mono font-bold rounded-lg transition-colors cursor-pointer ${
+              mode === 'strobe' ? 'aqua-button-primary' : 'text-[#94a3b8] hover:text-white'
             }`}
           >
             Stroboskop
@@ -215,8 +210,8 @@ export const FlashlightTool: React.FC = () => {
               setMode('sos');
               triggerHaptic(20);
             }}
-            className={`py-2 text-xs font-bold rounded-lg transition-colors cursor-pointer ${
-              mode === 'sos' ? 'bg-red-600 text-white' : 'text-slate-400 hover:text-white'
+            className={`py-2 text-xs font-mono font-bold rounded-lg transition-colors cursor-pointer ${
+              mode === 'sos' ? 'bg-red-600 text-white' : 'text-[#94a3b8] hover:text-white'
             }`}
           >
             Sygnał SOS
@@ -225,10 +220,10 @@ export const FlashlightTool: React.FC = () => {
 
         {/* Strobe speed slider */}
         {mode === 'strobe' && (
-          <div className="w-full max-w-md bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-2">
-            <div className="flex justify-between text-xs text-slate-300 font-medium">
-              <span>Częstotliwość stroboskopu LED:</span>
-              <span className="font-mono text-amber-400 font-bold">{strobeHz} Hz ({strobeHz * 60} RPM)</span>
+          <div className="w-full max-w-md bg-[#0a0d12] p-4 rounded-xl border border-[#334155] space-y-2 font-mono text-xs">
+            <div className="flex justify-between text-[#cbd5e1]">
+              <span>Częstotliwość stroboskopu:</span>
+              <span className="text-amber-400 font-bold">{strobeHz} Hz ({strobeHz * 60} RPM)</span>
             </div>
             <input
               type="range"
@@ -237,18 +232,18 @@ export const FlashlightTool: React.FC = () => {
               step={1}
               value={strobeHz}
               onChange={(e) => setStrobeHz(Number(e.target.value))}
-              className="w-full accent-amber-500 cursor-pointer"
+              className="w-full accent-[#0284c7] cursor-pointer"
             />
           </div>
         )}
       </div>
 
       {/* Screen Softbox Lighting Presets */}
-      <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 space-y-4">
-        <div className="flex items-center justify-between text-xs font-bold text-slate-200">
+      <div className="retro-bezel rounded-xl p-5 border border-[#b6b0a3] space-y-3">
+        <div className="flex items-center justify-between text-xs font-bold text-[#1c1917]">
           <span className="flex items-center gap-1.5">
-            <Palette className="w-4 h-4 text-amber-400" />
-            Konfiguracja Świecenia Ekranem (Softbox)
+            <Palette className="w-4 h-4 text-[#0284c7]" />
+            Wybór Barwy Świecenia Ekranem (Softbox Makro)
           </span>
         </div>
 
@@ -261,13 +256,13 @@ export const FlashlightTool: React.FC = () => {
                 setScreenLightOn(true);
                 triggerHaptic(20);
               }}
-              className="flex items-center gap-2.5 p-3 rounded-lg border border-slate-800 bg-slate-950 hover:border-slate-700 transition-all text-left cursor-pointer"
+              className="aqua-button flex items-center gap-2.5 p-2.5 rounded-lg text-left cursor-pointer"
             >
               <div
-                className="w-5 h-5 rounded-full border border-white/20 shadow-sm"
+                className="w-4 h-4 rounded-full border border-black/30 shadow-sm"
                 style={{ backgroundColor: p.color }}
               />
-              <span className="text-xs font-medium text-slate-200">{p.label}</span>
+              <span className="text-xs font-medium text-[#292524]">{p.label}</span>
             </button>
           ))}
         </div>

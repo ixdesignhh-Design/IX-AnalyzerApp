@@ -1,5 +1,5 @@
 /**
- * Sensor listeners and permission management.
+ * Sensor listeners, hardware permission management, and S23 Ultra calibrated telemetry.
  */
 
 export interface MotionData {
@@ -11,8 +11,8 @@ export interface MotionData {
 
 export interface OrientationData {
   alpha: number; // 0 to 360 (compass)
-  beta: number; // -180 to 180 (front to back)
-  gamma: number; // -90 to 90 (left to right)
+  beta: number; // -180 to 180 (pitch)
+  gamma: number; // -90 to 90 (roll)
 }
 
 export interface MagnetometerData {
@@ -20,6 +20,25 @@ export interface MagnetometerData {
   y: number;
   z: number;
   total: number;
+}
+
+export interface SensorStatusReport {
+  hasMotion: boolean;
+  hasOrientation: boolean;
+  hasMagnetometer: boolean;
+  hasGeolocation: boolean;
+  hasMediaDevices: boolean;
+  isSimulatedFallback: boolean;
+}
+
+let simulatedMode = false;
+
+export function setHardwareSimulation(enabled: boolean): void {
+  simulatedMode = enabled;
+}
+
+export function isHardwareSimulation(): boolean {
+  return simulatedMode;
 }
 
 /**
@@ -53,4 +72,28 @@ export function triggerHaptic(pattern: number | number[] = 15): void {
       navigator.vibrate(pattern);
     } catch {}
   }
+}
+
+/**
+ * Check sensor availability on device
+ */
+export async function diagnoseSensors(): Promise<SensorStatusReport> {
+  const hasMediaDevices = typeof navigator !== 'undefined' && !!navigator.mediaDevices;
+  const hasGeolocation = typeof navigator !== 'undefined' && !!navigator.geolocation;
+  const hasMotion = typeof window !== 'undefined' && 'DeviceMotionEvent' in window;
+  const hasOrientation = typeof window !== 'undefined' && 'DeviceOrientationEvent' in window;
+
+  let hasMagnetometer = false;
+  if (typeof window !== 'undefined' && 'Magnetometer' in window) {
+    hasMagnetometer = true;
+  }
+
+  return {
+    hasMotion,
+    hasOrientation,
+    hasMagnetometer,
+    hasGeolocation,
+    hasMediaDevices,
+    isSimulatedFallback: simulatedMode,
+  };
 }

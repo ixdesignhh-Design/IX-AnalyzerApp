@@ -6,20 +6,41 @@ let audioCtx: AudioContext | null = null;
 
 export function getAudioContext(): AudioContext {
   if (!audioCtx || audioCtx.state === 'closed') {
-    const AudioContextClass = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+    const AudioContextClass =
+      window.AudioContext ||
+      (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
     audioCtx = new AudioContextClass();
   }
   if (audioCtx.state === 'suspended') {
-    audioCtx.resume();
+    audioCtx.resume().catch(() => {});
   }
   return audioCtx;
+}
+
+// Auto-unlock AudioContext on first user interaction anywhere in the window
+if (typeof window !== 'undefined') {
+  const unlockAudio = () => {
+    try {
+      const ctx = getAudioContext();
+      if (ctx.state === 'suspended') {
+        ctx.resume().catch(() => {});
+      }
+    } catch {}
+    window.removeEventListener('pointerdown', unlockAudio);
+    window.removeEventListener('keydown', unlockAudio);
+  };
+  window.addEventListener('pointerdown', unlockAudio, { passive: true });
+  window.addEventListener('keydown', unlockAudio, { passive: true });
 }
 
 /**
  * Autocorrelation pitch detection algorithm.
  * Extremely robust for finding fundamental frequency of plucked mechanical belts (60Hz - 400Hz).
  */
-export function autoCorrelate(buffer: Float32Array, sampleRate: number): { freq: number; confidence: number } {
+export function autoCorrelate(
+  buffer: Float32Array,
+  sampleRate: number
+): { freq: number; confidence: number } {
   const SIZE = buffer.length;
   let rms = 0;
 
