@@ -1,0 +1,6 @@
+{
+  "name": "Workshop MultiTool & Sensor Suite",
+  "description": "Kompletny multitool 26 narzędzi sensorycznych: latarka, poziomica 3D, kątomierz AR, linijka, pomiary AR, kompas, wysokościomierz, barometr, termo/higrometr, sejsmograf, prędkościomierz, GPS, detektor metalu, EMF, skaner kodów/QR, lupa makro, decybelomierz, generator Hz, stroboskop, lustro, metronom/stroik, stoper, przelicznik jednostek, kod Morse'a, test ekranu, info o systemie oraz moduły druku 3D Klipper.",
+  "requestFramePermissions": ["camera", "microphone", "accelerometer", "gyroscope", "magnetometer", "geolocation"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
